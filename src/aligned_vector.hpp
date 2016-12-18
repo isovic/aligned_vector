@@ -20,25 +20,47 @@ class aligned_vector {
  public:
   explicit aligned_vector() noexcept : data_(NULL), raw_data_(NULL), size_(0), capacity_(0) { }
 
-  // explicit aligned_vector() noexcept {
-  // }
+  explicit aligned_vector(size_t n) noexcept : data_(NULL), raw_data_(NULL), size_(0), capacity_(0) {
+    resize(n);
+  }
+
+  explicit aligned_vector(size_t n, const T &val) noexcept : data_(NULL), raw_data_(NULL), size_(0), capacity_(0) {
+    reserve(n);
+    for (size_t i=0; i<n; i++) {
+      push_back(val);
+    }
+  }
+
+  explicit aligned_vector(const aligned_vector& p) noexcept {
+    copy_from_(p);
+  }
 
   ~aligned_vector() noexcept {
     free_data_();
   }
 
-  size_t size() const { return size_; }
+  inline size_t size() const { return size_; }
 
-  bool empty() { return (size_ == 0); }
+  inline bool empty() { return (size_ == 0); }
 
-  T* data() const { return data_; }
+  inline T* data() const { return data_; }
 
   T& at(size_t pos) const {
     assert(pos >= 0 && pos < this->size_);
     return data_[pos];
   }
 
-  T& operator[](size_t pos) {
+  aligned_vector<T, A>& operator=(const aligned_vector& p) {
+    copy_from_(p);
+    return *this;
+  }
+
+  inline T& operator[](size_t pos) {
+    assert(pos >= 0 && pos < this->size_);
+    return data_[pos];
+  }
+
+  inline const T& operator[](size_t pos) const {
     assert(pos >= 0 && pos < this->size_);
     return data_[pos];
   }
@@ -47,7 +69,7 @@ class aligned_vector {
     free_data_();
   }
 
-  size_t capacity() { return capacity_; }
+  inline size_t capacity() const { return capacity_; }
 
   void push_back(T& t) {
     if (size_ >= capacity_) {
@@ -69,9 +91,23 @@ class aligned_vector {
     push_back(t);
   }
 
+  void emplace_back(const T& t) {
+    push_back(t);
+  }
+
   void resize(size_t size) {
     reserve(size);
     size_ = size;
+  }
+
+  inline T& front() {
+    assert(size_ > 0);
+    return raw_data_[0];
+  }
+
+  inline T& back() {
+    assert(size_ > 0);
+    return raw_data_[size_ - 1];
   }
 
   void reserve(size_t capacity) {
@@ -113,8 +149,6 @@ class aligned_vector {
   }
 #endif
   
-  // back()
-  // front()
   // begin()
   // end()
   // assign
@@ -141,6 +175,14 @@ class aligned_vector {
       void* ptr = (void*) *pt;
       size_t storage_size = (size + alignment_size - 1) * sizeof(T);
       return (T*) std::align(alignment_size, size * sizeof(T), ptr, storage_size);
+  }
+
+  void copy_from_(const aligned_vector& p) {
+    if (&p == this) { return; }
+    this->free_data_();
+    this->reserve(p.capacity());
+    this->size_ = p.size();
+    memmove(data_, p.data(), p.size());
   }
 };
 
