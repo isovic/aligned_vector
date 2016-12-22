@@ -12,6 +12,21 @@
 
 namespace is {
 
+// This is the official STL implementation as is in e.g. GCC 6.2. There is no std::align in GCC 4.8 for some reason.
+// The code is presented here to provide support for older compilers.
+inline void* align(size_t __align, size_t __size, void*& __ptr, size_t& __space) noexcept {
+
+    const auto __intptr = reinterpret_cast<uintptr_t>(__ptr);
+    const auto __aligned = (__intptr - 1u + __align) & -__align;
+    const auto __diff = __aligned - __intptr;
+    if ((__size + __diff) > __space)
+        return nullptr;
+    else {
+        __space -= __diff;
+        return __ptr = reinterpret_cast<void*>(__aligned);
+    }
+}
+
 /**
  * Template parameters: T class type, A alignment size in bytes.
  */
@@ -174,7 +189,7 @@ class aligned_vector {
       *pt = new T[size + alignment_size - 1];
       void* ptr = (void*) *pt;
       size_t storage_size = (size + alignment_size - 1) * sizeof(T);
-      return (T*) std::align(alignment_size, size * sizeof(T), ptr, storage_size);
+      return (T*) is::align(alignment_size, size * sizeof(T), ptr, storage_size);
   }
 
   void copy_from_(const aligned_vector& p) {
